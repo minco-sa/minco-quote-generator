@@ -1,0 +1,12 @@
+{
+  "name": "minco-estimator",
+  "version": "1.0.0",
+  "description": "Deterministic take-off, costing, quotation tracking and shop-drawing generation for aluminium windows, doors and curtain wall.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "start": "python3 -m http.server 8080"
+  },
+  "license": "UNLICENSED"
+}
