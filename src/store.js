@@ -1,0 +1,119 @@
+// Persistence: localStorage-backed collections with seed defaults and JSON backup.
+import { DEFAULT_SYSTEMS } from './data/systems.js';
+import { DEFAULT_PRICES } from './data/prices.js';
+import { DEFAULT_SETTINGS } from './data/settings.js';
+
+const NS = 'minco.estimator.v1';
+const KEYS = { systems: `${NS}.systems`, prices: `${NS}.prices`, quotes: `${NS}.quotes`, settings: `${NS}.settings`, clients: `${NS}.clients` };
+
+const read = (k, fallback) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
+const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error('storage write failed', e); } };
+const clone = (v) => JSON.parse(JSON.stringify(v));
+
+export const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+export const today = () => new Date().toISOString().slice(0, 10);
+
+export const store = {
+  systems: read(KEYS.systems, null) || clone(DEFAULT_SYSTEMS),
+  prices: read(KEYS.prices, null) || clone(DEFAULT_PRICES),
+  quotes: read(KEYS.quotes, []),
+  clients: read(KEYS.clients, []),
+  settings: deepMerge(clone(DEFAULT_SETTINGS), read(KEYS.settings, {})),
+  listeners: new Set(),
+
+  save(what) {
+    if (!what || what === 'systems') write(KEYS.systems, this.systems);
+    if (!what || what === 'prices') write(KEYS.prices, this.prices);
+    if (!what || what === 'quotes') write(KEYS.quotes, this.quotes);
+    if (!what || what === 'clients') write(KEYS.clients, this.clients);
+    if (!what || what === 'settings') write(KEYS.settings, this.settings);
+    this.listeners.forEach((l) => l(what));
+  },
+  onChange(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
+
+  // ---- systems
+  getSystem(id) { return this.systems.find((s) => s.id === id); },
+  upsertSystem(sys) {
+    const i = this.systems.findIndex((s) => s.id === sys.id);
+    if (i >= 0) this.systems[i] = sys; else this.systems.push(sys);
+    this.save('systems');
+  },
+  deleteSystem(id) { this.systems = this.systems.filter((s) => s.id !== id); this.save('systems'); },
+  resetSystems() { this.systems = clone(DEFAULT_SYSTEMS); this.save('systems'); },
+
+  // ---- prices
+  upsertPrice(p) {
+    const i = this.prices.findIndex((x) => x.code === p.code);
+    if (i >= 0) this.prices[i] = { ...this.prices[i], ...p }; else this.prices.push(p);
+    this.save('prices');
+  },
+  deletePrice(code) { this.prices = this.prices.filter((p) => p.code !== code); this.save('prices'); },
+  resetPrices() { this.prices = clone(DEFAULT_PRICES); this.save('prices'); },
+
+  // ---- quotes
+  getQuote(id) { return this.quotes.find((q) => q.id === id); },
+  newQuote(partial = {}) {
+    const d = today();
+    const q = {
+      id: uid(), ref: '', date: d, status: 'draft', history: [{ at: new Date().toISOString(), status: 'draft', note: 'Created' }],
+      client: { company: '', contact: '', phone: '', email: '' },
+      project: { name: '', location: '', consultant: '', contractor: '' },
+      items: [], discountPct: 0, notes: '', validityDays: this.settings.validityDays || 20,
+      ...partial,
+    };
+    if (!q.ref) q.ref = this.nextRef(q);
+    this.quotes.unshift(q);
+    this.save('quotes');
+    return q;
+  },
+  nextRef(q) {
+    const d = (q.date || today()).replace(/-/g, '');
+    const slug = (q.project?.name || 'PRJ').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 14) || 'PRJ';
+    const base = `${this.settings.company.refPrefix}/${d.slice(0, 4)}/${d.slice(4, 8)}-${slug}`;
+    const n = this.quotes.filter((x) => x.id !== q.id && x.ref && x.ref.startsWith(base)).length;
+    return n ? `${base}-R${n}` : base;
+  },
+  saveQuote(q) {
+    const i = this.quotes.findIndex((x) => x.id === q.id);
+    q.updatedAt = new Date().toISOString();
+    if (i >= 0) this.quotes[i] = q; else this.quotes.unshift(q);
+    this.save('quotes');
+  },
+  setStatus(q, status, note = '') {
+    q.status = status;
+    q.history = q.history || [];
+    q.history.push({ at: new Date().toISOString(), status, note });
+    if (status === 'approved') q.approvedAt = today();
+    this.saveQuote(q);
+  },
+  deleteQuote(id) { this.quotes = this.quotes.filter((q) => q.id !== id); this.save('quotes'); },
+  duplicateQuote(q) {
+    const copy = clone(q);
+    copy.id = uid(); copy.date = today(); copy.status = 'draft'; copy.approvedAt = undefined;
+    copy.history = [{ at: new Date().toISOString(), status: 'draft', note: `Revision of ${q.ref}` }];
+    copy.ref = this.nextRef(copy);
+    this.quotes.unshift(copy); this.save('quotes');
+    return copy;
+  },
+
+  // ---- backup
+  exportAll() { return { exportedAt: new Date().toISOString(), version: 1, systems: this.systems, prices: this.prices, quotes: this.quotes, clients: this.clients, settings: this.settings }; },
+  importAll(data) {
+    if (!data || typeof data !== 'object') throw new Error('Invalid backup file');
+    if (Array.isArray(data.systems)) this.systems = data.systems;
+    if (Array.isArray(data.prices)) this.prices = data.prices;
+    if (Array.isArray(data.quotes)) this.quotes = data.quotes;
+    if (Array.isArray(data.clients)) this.clients = data.clients;
+    if (data.settings) this.settings = deepMerge(clone(DEFAULT_SETTINGS), data.settings);
+    this.save();
+  },
+};
+
+function deepMerge(base, over) {
+  if (!over || typeof over !== 'object') return base;
+  for (const k of Object.keys(over)) {
+    if (over[k] && typeof over[k] === 'object' && !Array.isArray(over[k]) && base[k] && typeof base[k] === 'object') base[k] = deepMerge(base[k], over[k]);
+    else base[k] = over[k];
+  }
+  return base;
+}
