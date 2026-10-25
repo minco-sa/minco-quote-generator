@@ -3,6 +3,7 @@ import { costUnit } from '../engine/calc.js';
 import { elevationSVG } from '../engine/drawing.js';
 import { CATEGORIES } from '../data/systems.js';
 import { esc, money, num, mm, pct, field, navigate, toast } from './helpers.js';
+import { extractOpenings, suggestSystem } from '../import/drawings.js';
 
 // Module state so the form survives re-renders of the results pane.
 const state = { systemId: null, inputs: {}, qty: 1, glassKey: '', mark: '', location: '', overrides: {}, install: true, paint: false, tab: 'cost' };
@@ -41,7 +42,8 @@ export function renderEstimator(container, _m, query) {
   if (!store.systems.length) { container.innerHTML = '<div class="empty">No systems defined. <a href="#/systems/new">Create one</a>.</div>'; return; }
 
   container.innerHTML = `
-  <h1>Estimator <span class="sub">take-off → cost → price per m²</span></h1>
+  <div class="flex"><h1 style="margin:0 0 14px">Estimator <span class="sub">take-off → cost → price per m²</span></h1><span class="spacer"></span><button class="btn" data-act="ai-draw" id="ai-draw">📐 Read openings from drawing / photo (AI)</button></div>
+  <div id="ai-panel"></div>
   ${targetQuote ? `<div class="ok-note">${editing ? 'Editing item in' : 'Adding items to'} quotation <b>${esc(targetQuote.ref)}</b> — <a href="#/quotes/${targetQuote.id}">back to quotation</a></div>` : ''}
   <div class="row">
     <div class="col"><div class="card" id="form"></div></div>
@@ -58,7 +60,8 @@ export function renderEstimator(container, _m, query) {
       <h2>Opening</h2>
       <div class="grid">
         ${field('System', `<select class="i" data-k="systemId">${systemOptions()}</select>`)}
-        <div class="sub">${esc(sys.description || '')} ${sys.mincoCode ? `<span class="tag">MINCO-${esc(sys.mincoCode)}</span>` : ''} <a href="#/systems/${sys.id}">edit system</a></div>
+        <div class="sub">${sys.supplier ? `<span class="tag">supplier ${esc(sys.supplier)}</span>` : ''}${sys.family ? `<span class="tag">${esc(sys.family)}</span>` : ''}${sys.verified ? '<span class="tag" style="background:#dcfce7;color:#14532d">factory sheet</span>' : '<span class="tag" style="background:#fef3c7;color:#78350f">formulas not verified</span>'} ${esc(sys.description || '')} ${sys.mincoCode ? `<span class="tag">MINCO-${esc(sys.mincoCode)}</span>` : ''} <a href="#/systems/${sys.id}">edit system</a></div>
+        ${sys.glassNote ? `<div class="warn">${esc(sys.glassNote)}</div>` : ''}
         <div class="grid c2">
           ${field('Mark / tag', `<input class="i" data-k="mark" value="${esc(state.mark)}" placeholder="W1, D2 …">`)}
           ${field('Location', `<input class="i" data-k="location" value="${esc(state.location)}" placeholder="GF living, 1F bedroom …">`)}
@@ -190,7 +193,74 @@ export function renderEstimator(container, _m, query) {
     state.tab = b.dataset.tab; renderResults();
   });
 
+  container.querySelector('#ai-draw').addEventListener('click', () => renderDrawingReader(container.querySelector('#ai-panel'), targetQuote));
   renderForm(); renderResults();
+}
+
+// ---------------------------------------------------------------- AI drawing reader
+function renderDrawingReader(panel, targetQuote) {
+  const st = { files: [], rows: [], busy: false, hint: '', notes: '' };
+  const glassOpts = store.prices.filter((p) => p.category === 'glass');
+  const draw = () => {
+    const hasKey = !!(store.settings.aiApiKey || '').trim();
+    panel.innerHTML = `<div class="card"><div class="flex"><h2 style="margin:0">Read openings from drawing / photo</h2><span class="spacer"></span><button class="btn sm" data-a="close">✕ close</button></div>
+      ${!hasKey ? '<div class="warn">Add your Anthropic API key in <a href="#/settings">Settings → AI</a> first.</div>' : ''}
+      <div class="grid c2" style="margin-top:8px">
+        ${field('Drawing, schedule or site photo (PDF / JPG / PNG, several allowed)', '<input type="file" class="i" id="dr-files" multiple accept=".pdf,image/*">')}
+        ${field('Hint for the reader (optional)', `<input class="i" id="dr-hint" placeholder="e.g. sizes are in cm; ground floor only; W1–W6 are sliding" value="${esc(st.hint)}">`)}
+      </div>
+      <div class="actions" style="margin-top:8px"><button class="btn p" data-a="read" ${st.busy || !hasKey ? 'disabled' : ''}>${st.busy ? 'Reading…' : 'Read with AI'}</button><span class="sub" id="dr-status"></span></div>
+      ${st.rows.length ? `<p class="sub" style="margin-top:8px">Check every row against the drawing: W / H are what the reader found (mm). They are passed to the system's <b>W / H</b> inputs exactly as on your cutting sheet, so make sure they mean the same thing. ${st.notes ? 'Reader notes: ' + esc(st.notes) : ''}</p>
+      <div style="overflow-x:auto"><table class="t"><thead><tr><th></th><th>Mark</th><th>Type</th><th class="n">W</th><th class="n">H</th><th class="n">FIX</th><th class="n">Qty</th><th>System</th><th>Glass</th><th>Location / notes</th><th class="n">Conf.</th></tr></thead><tbody>
+        ${st.rows.map((r, i) => `<tr><td><input type="checkbox" data-sel="${i}" ${r.selected ? 'checked' : ''}></td><td><input class="i sm" data-r="mark" data-i="${i}" value="${esc(r.mark)}" style="width:60px"></td><td>${esc(r.type)}</td>
+          <td class="n"><input class="i sm" type="number" data-r="W" data-i="${i}" value="${esc(r.W)}" style="width:80px"></td><td class="n"><input class="i sm" type="number" data-r="H" data-i="${i}" value="${esc(r.H)}" style="width:80px"></td><td class="n"><input class="i sm" type="number" data-r="FIX" data-i="${i}" value="${esc(r.FIX)}" style="width:70px"></td><td class="n"><input class="i sm" type="number" data-r="qty" data-i="${i}" value="${esc(r.qty)}" style="width:55px"></td>
+          <td><select class="i sm" data-r="systemId" data-i="${i}"><option value="">— choose —</option>${store.systems.map((s) => `<option value="${esc(s.id)}" ${s.id === r.systemId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></td>
+          <td><select class="i sm" data-r="glassKey" data-i="${i}"><option value="">default</option>${glassOpts.map((g) => `<option value="${esc(g.code)}" ${g.code === r.glassKey ? 'selected' : ''}>${esc(g.name.slice(0, 40))}</option>`).join('')}</select></td>
+          <td class="sub">${esc(r.location)} ${r.notes ? '· ' + esc(r.notes) : ''}</td><td class="n" style="color:${r.confidence < 0.6 ? '#b45309' : '#16a34a'}">${Math.round(r.confidence * 100)}%</td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="actions" style="margin-top:8px"><button class="btn ok" data-a="add">Add selected openings to quotation</button><span class="sub">${st.rows.filter((r) => r.selected).length} selected · rows without a system are skipped</span></div>` : ''}
+    </div>`;
+  };
+  panel.addEventListener('change', (e) => {
+    const el = e.target;
+    if (el.id === 'dr-files') st.files = [...el.files];
+    if (el.dataset.sel !== undefined) st.rows[Number(el.dataset.sel)].selected = el.checked;
+    if (el.dataset.r) { const r = st.rows[Number(el.dataset.i)]; r[el.dataset.r] = el.type === 'number' ? Number(el.value) : el.value; }
+  });
+  panel.addEventListener('input', (e) => { const el = e.target; if (el.id === 'dr-hint') st.hint = el.value; if (el.dataset.r) { const r = st.rows[Number(el.dataset.i)]; r[el.dataset.r] = el.type === 'number' ? Number(el.value) : el.value; } });
+  panel.addEventListener('click', async (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.a === 'close') { panel.innerHTML = ''; return; }
+    if (b.dataset.a === 'read') {
+      if (!st.files.length) { toast('Choose at least one file'); return; }
+      st.busy = true; draw();
+      try {
+        const r = await extractOpenings(st.files, store.settings, { hint: st.hint, onRetry: (m) => { const el = panel.querySelector('#dr-status'); if (el) el.textContent = m; } });
+        st.notes = [r.units_detected ? `units: ${r.units_detected}` : '', r.notes].filter(Boolean).join(' · ');
+        st.rows = (r.openings || []).map((o, i) => ({ mark: o.mark || `W${i + 1}`, type: o.type, W: Math.round(o.width_mm), H: Math.round(o.height_mm), FIX: Math.round(o.fix_height_mm || 0), qty: Math.max(1, o.qty || 1), systemId: suggestSystem(o, store.systems), glassKey: '', location: o.location || '', notes: o.notes || '', confidence: o.confidence ?? 0.5, selected: true }));
+        toast(`${st.rows.length} opening(s) read`);
+      } catch (err) { toast(err.message, 5000); }
+      st.busy = false; draw();
+    }
+    if (b.dataset.a === 'add') {
+      const rows = st.rows.filter((r) => r.selected && r.systemId && r.W > 0 && r.H > 0);
+      if (!rows.length) { toast('No complete rows selected'); return; }
+      let q = targetQuote;
+      if (!q) { const name = window.prompt('New quotation — project name:', '') ?? ''; q = store.newQuote({ project: { name, location: '', consultant: '', contractor: '' } }); }
+      for (const r of rows) {
+        const sys = store.getSystem(r.systemId);
+        const inputs = {};
+        for (const p of sys.params || []) inputs[p.key] = p.default;
+        inputs.W = r.W; inputs.H = r.H;
+        if ((sys.params || []).some((p) => p.key === 'FIX')) inputs.FIX = r.FIX || sys.params.find((p) => p.key === 'FIX').default;
+        if ((sys.params || []).some((p) => p.key === 'TOP')) inputs.TOP = r.FIX || 0;
+        inputs.INSTALL = true; inputs.PAINT = false;
+        q.items.push({ id: Math.random().toString(36).slice(2, 10), mark: r.mark, location: r.location, systemId: sys.id, systemName: sys.name, inputs, qty: r.qty, glassKey: r.glassKey || '', overrides: {}, snapshot: {} });
+      }
+      store.saveQuote(q); toast(`${rows.length} opening(s) added to ${q.ref}`); navigate(`#/quotes/${q.id}`);
+    }
+  });
+  draw();
 }
 
 function addToQuote(editing, targetQuote) {

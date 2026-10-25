@@ -82,13 +82,6 @@ test('Royal 120 2-panel (mm skill example W2000 × H1500)', () => {
   assert.equal(t.vars.SW, 1025); assert.equal(t.vars.SH, 1440);
   assert.equal(t.glass[0].w, 900); assert.equal(t.glass[0].h, 1315);
 });
-test('SG50 curtain wall grid', () => {
-  const t = takeoff(sys('SG50_STICK_CW'), { W: 6000, H: 4000, NCOL: 4, NROW: 2 });
-  assert.equal(t.pieces.find((p) => p.label === 'Mullion').qty, 5);
-  assert.equal(t.pieces.find((p) => p.label === 'Transom').qty, 12);
-  assert.equal(t.pieces.find((p) => p.label === 'Transom').length, 1450);
-  assert.equal(t.glass[0].qty, 8); assert.equal(t.glass[0].w, 1480); assert.equal(t.glass[0].h, 1980);
-});
 
 test('packBars: FFD, kerf, whole bars only', () => {
   const r = packBars([{ length: 2317, qty: 2 }, { length: 2117, qty: 2 }], 6000, { kerf: 5 });
@@ -138,5 +131,59 @@ test('costQuote aggregates items × qty and project pieces scale', () => {
   assert.equal(frame.result.totalPieces, 12);
   assert.ok(frame.result.barCount >= Math.ceil(frame.result.totalLength / 6000));
 });
+
+
+// ---- Systems transcribed from WINDOWS_C_LIST.xlsx: each formula checked against the sheet with W=2000, H=1500, FIX=500
+{
+  const pc = (t, label) => t.pieces.find((p) => p.label === label);
+  test('CLIST sliding 2 panels', () => {
+    const t = takeoff(sys('CL_SLIDING_2P'), { W: 2000, H: 1500 });
+    assert.deepEqual([pc(t, 'FRAME W').length, pc(t, 'FRAME W').qty], [2086, 2]);
+    assert.deepEqual([pc(t, 'FRAME H').length, pc(t, 'FRAME H').qty], [1586, 2]);
+    assert.deepEqual([pc(t, 'SASH W').length, pc(t, 'SASH W').qty], [1005, 4]);
+    assert.deepEqual([pc(t, 'SASH H').length, pc(t, 'SASH H').qty], [1442, 4]);
+    assert.deepEqual([pc(t, 'INTERLOCK').length, pc(t, 'INTERLOCK').qty], [1442, 2]);
+    close(t.areaM2, 2.086 * 1.586, 1e-9);
+    assert.ok(t.warnings.some((w) => /Glass sizes are not defined/.test(w)));
+  });
+  test('CLIST sliding 2 panels + fix', () => {
+    const t = takeoff(sys('CL_SLIDING_2P_FIX'), { W: 2000, H: 1500, FIX: 500 });
+    assert.equal(pc(t, 'SASH H').length, 1500 - 500 - 40); assert.equal(pc(t, 'INTERLOCK').qty, 2);
+    assert.deepEqual([pc(t, 'TRANSOM').length, pc(t, 'TRANSOM').qty], [1926, 1]);
+    assert.deepEqual([pc(t, 'TR ADP W').length, pc(t, 'TR ADP H').length, pc(t, 'TR ADP H').qty], [1926, 445, 2]);
+    assert.deepEqual([pc(t, 'G BEAD W').length, pc(t, 'G BEAD H').length], [1912, 391]);
+  });
+  test('CLIST hinged + fix', () => {
+    const t = takeoff(sys('CL_HINGED_FIX'), { W: 1000, H: 1500, FIX: 400 });
+    assert.deepEqual([pc(t, 'FRAME W').length, pc(t, 'FRAME H').length, pc(t, 'SASH W').length, pc(t, 'SASH H').length], [1080, 1580, 966, 1075]);
+    assert.deepEqual([pc(t, 'TRANSOM').length, pc(t, 'TRANSOM').qty], [954, 1]);
+    assert.deepEqual([pc(t, 'SASH G BEAD W').length, pc(t, 'SASH G BEAD H').length], [862, 927]);
+    assert.deepEqual([pc(t, 'G BEAD W').length, pc(t, 'G BEAD H').length, pc(t, 'G BEAD H').qty], [954, 319, 2]);
+  });
+  test('CLIST hinged + 2 fix', () => {
+    const t = takeoff(sys('CL_HINGED_2FIX'), { W: 1000, H: 2000, FIX: 400 });
+    assert.equal(pc(t, 'SASH H').length, 2000 - 800 - 16); assert.equal(pc(t, 'TRANSOM').qty, 2);
+    assert.equal(pc(t, 'G BEAD W').qty, 4); assert.equal(pc(t, 'G BEAD H').qty, 4); assert.equal(pc(t, 'SASH G BEAD H').length, 1184 - 148);
+  });
+  test('CLIST fixed', () => {
+    const t = takeoff(sys('CL_FIXED'), { W: 1000, H: 1000 });
+    assert.deepEqual([pc(t, 'FRAME W').length, pc(t, 'FRAME H').length, pc(t, 'G BEAD W').length, pc(t, 'G BEAD H').length], [1080, 1080, 954, 910]);
+  });
+  test('CLIST door 1 leaf', () => {
+    const t = takeoff(sys('CL_DOOR_1LEAF'), { W: 900, H: 2100 });
+    assert.deepEqual([pc(t, 'FRAME W').length, pc(t, 'FRAME W').qty, pc(t, 'FRAME H').length, pc(t, 'FRAME H').qty], [980, 1, 2140, 2]);
+    assert.deepEqual([pc(t, 'SASH W').length, pc(t, 'SASH W').qty, pc(t, 'SASH H').length, pc(t, 'SASH H').qty], [866, 1, 2076, 2]);
+    assert.deepEqual([pc(t, 'SASH G BEAD W').length, pc(t, 'SASH G BEAD H').length, pc(t, 'THRESHOLD').length, pc(t, 'THRESHOLD').qty], [724, 1862, 724, 1]);
+    close(t.areaM2, 0.98 * 2.14, 1e-9);
+  });
+  test('CLIST door + fix', () => {
+    const t = takeoff(sys('CL_DOOR_FIX'), { W: 900, H: 2600, FIX: 500 });
+    assert.deepEqual([pc(t, 'FRAME H').length, pc(t, 'SASH H').length, pc(t, 'TRANSOM').length, pc(t, 'G BEAD H').length, pc(t, 'THRESHOLD').length], [2680, 2083, 854, 419, 724]);
+    assert.equal(pc(t, 'SASH G BEAD H').length, 2083 - 214);
+  });
+  test('retired assumed systems are not in the default library', () => {
+    assert.ok(!sys('BOX_HINGED_DOOR') && !sys('SG50_STICK_CW'));
+  });
+}
 
 console.log(`\n${passed} tests passed${process.exitCode ? ', some FAILED' : ''}`);

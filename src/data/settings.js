@@ -44,6 +44,10 @@ export const DEFAULT_SETTINGS = {
   ],
   webhookUrl: '',
   webhookSecret: '',
+  // AI (Claude API) — key stored only in this browser
+  aiApiKey: '',
+  aiModel: 'claude-opus-5-5',
+  aiFallback: true,
 };
 
 export const QUOTE_STATUSES = [

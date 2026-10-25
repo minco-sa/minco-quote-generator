@@ -6,6 +6,7 @@ import { renderShop } from './ui/shop.js';
 import { renderSystems, renderSystemEditor } from './ui/systems.js';
 import { renderPrices } from './ui/prices.js';
 import { renderSettings } from './ui/settings.js';
+import { renderImport } from './ui/import.js';
 import { qs } from './ui/helpers.js';
 
 const routes = [
@@ -18,6 +19,7 @@ const routes = [
   { re: /^#\/systems\/new/, view: (c, m, q) => renderSystemEditor(c, null, q), nav: 'systems' },
   { re: /^#\/systems\/([^/?]+)/, view: (c, m, q) => renderSystemEditor(c, m[1], q), nav: 'systems' },
   { re: /^#\/systems/, view: renderSystems, nav: 'systems' },
+  { re: /^#\/import/, view: renderImport, nav: 'import' },
   { re: /^#\/prices/, view: renderPrices, nav: 'prices' },
   { re: /^#\/settings/, view: renderSettings, nav: 'settings' },
 ];

@@ -6,7 +6,7 @@ import { esc, mm, num, field, input, select, setPath, download, readFile, toast,
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
 const FINISHES = ['black', 'mill', 'bronze', 'white', 'champagne', 'other'];
-const DRAW_TYPES = [['sliding', 'Sliding (pattern of S/F panels, optional top light)'], ['fixed', 'Fixed (optional columns)'], ['hung', 'Top-hung over fixed'], ['door', 'Hinged door (leaves)'], ['grid', 'Grid — curtain wall / skylight (cols × rows)'], ['blank', 'Plain rectangle']];
+const DRAW_TYPES = [['sliding', 'Sliding (pattern of S/F panels, optional top light)'], ['fixed', 'Fixed (optional columns)'], ['hung', 'Top-hung over fixed (equal halves)'], ['casement', 'Hinged sash with optional fixed top / bottom'], ['door', 'Hinged door (leaves, optional fixed top)'], ['grid', 'Grid — curtain wall / skylight (cols × rows)'], ['blank', 'Plain rectangle']];
 
 function newSystemTemplate() {
   return {
@@ -31,7 +31,7 @@ export function renderSystems(container) {
     <div class="flex" style="margin-bottom:12px"><h1 style="margin:0">Systems library</h1><span class="sub">each system = parametric rules for cut lengths, glass, accessories and drawing</span><span class="spacer"></span>
       <button class="btn" data-act="import">Import JSON</button><a class="btn p" href="#/systems/new">+ New system</a></div>
     ${CATEGORIES.map((c) => { const list = store.systems.filter((s) => (s.category || 'other') === c.id); if (!list.length) return ''; return `<h3 style="margin:14px 0 8px">${esc(c.label)}</h3><div class="grid c2">${list.map((s) => `
-      <div class="sys-card"><h3>${esc(s.name)} ${s.mincoCode ? `<span class="tag">MINCO-${esc(s.mincoCode)}</span>` : ''}</h3><div class="sub">${esc(s.nameAr || '')} · <span class="mono">${esc(s.id)}</span></div>
+      <div class="sys-card"><h3>${esc(s.name)} ${s.mincoCode ? `<span class="tag">MINCO-${esc(s.mincoCode)}</span>` : ''} ${s.verified ? '<span class="tag" style="background:#dcfce7;color:#14532d">factory sheet</span>' : '<span class="tag" style="background:#fef3c7;color:#78350f">not verified</span>'}</h3><div class="sub">${esc(s.nameAr || '')} · <span class="mono">${esc(s.id)}</span>${s.supplier ? ` · supplier <b>${esc(s.supplier)}</b>` : ''}${s.family ? ` · ${esc(s.family)}` : ''}${s.source ? ` · source: ${esc(s.source)}` : ''}</div>
         <p class="sub" style="margin:6px 0">${esc(s.description || '')}</p>
         <div class="sub">${(s.params || []).length} params · ${(s.variables || []).length} variables · ${(s.profiles || []).length} profiles / ${(s.profiles || []).reduce((a, p) => a + (p.pieces || []).length, 0)} pieces · ${(s.glass || []).length} glass · ${(s.accessories || []).length} accessories</div>
         <div class="actions" style="margin-top:8px"><a class="btn sm p" href="#/systems/${esc(s.id)}">Edit</a><a class="btn sm" href="#/estimator">Estimate</a><button class="btn sm" data-dup="${esc(s.id)}">Duplicate</button><button class="btn sm" data-exp="${esc(s.id)}">Export JSON</button><button class="btn sm bad" data-del="${esc(s.id)}">Delete</button></div></div>`).join('')}</div>`; }).join('')}
@@ -74,6 +74,12 @@ export function renderSystemEditor(container, id) {
         ${field('System ID (unique, no spaces)', input('id', draft.id))}${field('Name', input('name', draft.name))}${field('Arabic name', input('nameAr', draft.nameAr || ''))}
         ${field('Category', select('category', draft.category, CATEGORIES.map((c) => ({ value: c.id, label: c.label }))))}
         ${field('MINCO code (catalogue)', input('mincoCode', draft.mincoCode || '', { placeholder: 'SL94, HW52, CW50 …' }))}
+        ${field('Profile supplier code', input('supplier', draft.supplier || '', { placeholder: 'DHY, ALINCO, ALUPCO …' }))}
+        ${field('Profile family / series', input('family', draft.family || '', { placeholder: '120 series, Saraya 105 …' }))}
+        ${field('Source of the formulas', input('source', draft.source || '', { placeholder: 'factory sheet name' }))}
+        <label class="f"><span>Verified by factory</span><span class="flex"><label><input type="checkbox" data-path="verified" ${draft.verified ? 'checked' : ''}> cutting formulas confirmed</label></span></label>
+        ${field('Product width for area (formula, blank = W)', input('areaW', draft.areaW || '', { cls: 'i mono', placeholder: 'W + 86' }))}
+        ${field('Product height for area (formula, blank = H)', input('areaH', draft.areaH || '', { cls: 'i mono', placeholder: 'H + 86' }))}
         ${field('Default glass', select('defaultGlassKey', draft.defaultGlassKey || '', [{ value: '', label: '— settings default —' }, ...glassCodes.map((g) => ({ value: g.code, label: g.name }))]))}
         ${field('Stock bar length', input('barLength', draft.barLength, { type: 'number' }), 'mm')}${field('Aluminium waste', input('waste', draft.waste, { type: 'number', step: 0.01 }), 'fraction')}${field('Cut rounding', input('rounding', draft.rounding ?? 1, { type: 'number', step: 0.5 }), 'mm')}
         </div>${field('Description / source of deductions', `<textarea class="i" data-path="description" style="font-family:inherit">${esc(draft.description || '')}</textarea>`)}`;
@@ -116,7 +122,9 @@ export function renderSystemEditor(container, id) {
         ${field('Top light height (sliding) — variable', input('drawing.top', draft.drawing.top || '', { cls: 'i mono', placeholder: 'TOP' }))}
         ${field('Columns (fixed / grid)', input('drawing.cols', draft.drawing.cols || '', { cls: 'i mono', placeholder: 'COLS or NCOL' }))}
         ${field('Rows (grid)', input('drawing.rows', draft.drawing.rows || '', { cls: 'i mono', placeholder: 'NROW' }))}
-        ${field('Leaves (door)', input('drawing.leaves', draft.drawing.leaves || '', { cls: 'i mono', placeholder: 'NLEAF' }))}</div>`;
+        ${field('Leaves (door / casement)', input('drawing.leaves', draft.drawing.leaves || '', { cls: 'i mono', placeholder: 'NLEAF' }))}
+        ${field('Fixed light on top (casement / door) — variable', input('drawing.fixTop', draft.drawing.fixTop || '', { cls: 'i mono', placeholder: 'FIX' }))}
+        ${field('Fixed light at bottom (casement) — variable', input('drawing.fixBottom', draft.drawing.fixBottom || '', { cls: 'i mono', placeholder: 'FIX' }))}</div>`;
       case 'json': return `<p class="sub">Full definition. Edit and apply, or copy to share / version in git.</p><textarea class="i" id="json" style="min-height:420px">${esc(JSON.stringify(draft, null, 2))}</textarea><div class="actions" style="margin-top:8px"><button class="btn" data-act="apply-json">Apply JSON</button></div>`;
       default: return '';
     }
@@ -154,7 +162,7 @@ export function renderSystemEditor(container, id) {
 
   container.addEventListener('input', (e) => {
     const el = e.target;
-    if (el.dataset.path) { let v = el.value; if (el.dataset.type === 'number' || el.type === 'number') v = v === '' ? '' : Number(v); setPath(draft, el.dataset.path, v); if (el.dataset.path.startsWith('params.') && el.dataset.path.endsWith('.default')) { const i = Number(el.dataset.path.split('.')[1]); ui.test[draft.params[i].key] = v; } runTest(); }
+    if (el.dataset.path) { let v = el.type === 'checkbox' ? el.checked : el.value; if (el.dataset.type === 'number' || el.type === 'number') v = v === '' ? '' : Number(v); setPath(draft, el.dataset.path, v); if (el.dataset.path.startsWith('params.') && el.dataset.path.endsWith('.default')) { const i = Number(el.dataset.path.split('.')[1]); ui.test[draft.params[i].key] = v; } runTest(); }
     else if (el.dataset.set) { setPath(draft, el.dataset.set, parseSet(el.value)); runTest(); }
     else if (el.dataset.test) { ui.test[el.dataset.test] = el.type === 'number' ? Number(el.value) : el.value; runTest(); }
   });

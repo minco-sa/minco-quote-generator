@@ -1,10 +1,11 @@
 // Persistence: localStorage-backed collections with seed defaults and JSON backup.
-import { DEFAULT_SYSTEMS } from './data/systems.js';
+import { DEFAULT_SYSTEMS, RETIRED_SYSTEM_IDS, LIBRARY_VERSION } from './data/systems.js';
+import { CLIST_PRICE_PLACEHOLDERS } from './data/systems-clist.js';
 import { DEFAULT_PRICES } from './data/prices.js';
 import { DEFAULT_SETTINGS } from './data/settings.js';
 
 const NS = 'minco.estimator.v1';
-const KEYS = { systems: `${NS}.systems`, prices: `${NS}.prices`, quotes: `${NS}.quotes`, settings: `${NS}.settings`, clients: `${NS}.clients` };
+const KEYS = { systems: `${NS}.systems`, prices: `${NS}.prices`, quotes: `${NS}.quotes`, settings: `${NS}.settings`, clients: `${NS}.clients`, version: `${NS}.libraryVersion`, imports: `${NS}.imports` };
 
 const read = (k, fallback) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
 const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error('storage write failed', e); } };
@@ -15,13 +16,15 @@ export const today = () => new Date().toISOString().slice(0, 10);
 
 export const store = {
   systems: read(KEYS.systems, null) || clone(DEFAULT_SYSTEMS),
-  prices: read(KEYS.prices, null) || clone(DEFAULT_PRICES),
+  prices: read(KEYS.prices, null) || clone([...DEFAULT_PRICES, ...CLIST_PRICE_PLACEHOLDERS]),
+  imports: read(KEYS.imports, []),
   quotes: read(KEYS.quotes, []),
   clients: read(KEYS.clients, []),
   settings: deepMerge(clone(DEFAULT_SETTINGS), read(KEYS.settings, {})),
   listeners: new Set(),
 
   save(what) {
+    if (!what || what === 'imports') write(KEYS.imports, this.imports);
     if (!what || what === 'systems') write(KEYS.systems, this.systems);
     if (!what || what === 'prices') write(KEYS.prices, this.prices);
     if (!what || what === 'quotes') write(KEYS.quotes, this.quotes);
@@ -42,11 +45,25 @@ export const store = {
   resetSystems() { this.systems = clone(DEFAULT_SYSTEMS); this.save('systems'); },
 
   // ---- prices
-  upsertPrice(p) {
+  upsertPrice(p, { keepHistory = true } = {}) {
     const i = this.prices.findIndex((x) => x.code === p.code);
-    if (i >= 0) this.prices[i] = { ...this.prices[i], ...p }; else this.prices.push(p);
+    if (i >= 0) {
+      const old = this.prices[i];
+      const history = Array.isArray(old.history) ? old.history.slice() : [];
+      if (keepHistory && Number(old.price) > 0 && (Number(old.price) !== Number(p.price) || (p.date && p.date !== old.date))) {
+        history.unshift({ price: Number(old.price), date: old.date || '', source: old.source || '', supplier: old.supplier || '' });
+      }
+      this.prices[i] = { ...old, ...p, history: history.slice(0, 30) };
+    } else this.prices.push({ ...p, history: [] });
     this.save('prices');
   },
+  /** Price variance (min–max) over history + current, for flagging >5% swings. */
+  priceRange(p) {
+    const vals = [Number(p.price), ...(p.history || []).map((h) => Number(h.price))].filter((v) => v > 0);
+    if (!vals.length) return null;
+    return { min: Math.min(...vals), max: Math.max(...vals) };
+  },
+  logImport(entry) { this.imports.unshift({ at: new Date().toISOString(), ...entry }); this.imports = this.imports.slice(0, 200); this.save('imports'); },
   deletePrice(code) { this.prices = this.prices.filter((p) => p.code !== code); this.save('prices'); },
   resetPrices() { this.prices = clone(DEFAULT_PRICES); this.save('prices'); },
 
@@ -108,6 +125,20 @@ export const store = {
     this.save();
   },
 };
+
+/** Bring stored libraries up to the current defaults without overwriting user edits. */
+function migrateLibrary() {
+  const v = Number(read(KEYS.version, 0)) || 0;
+  if (v >= LIBRARY_VERSION) return;
+  const usedIds = new Set(store.quotes.flatMap((q) => (q.items || []).map((i) => i.systemId)));
+  for (const d of DEFAULT_SYSTEMS) if (!store.systems.some((s) => s.id === d.id)) store.systems.push(clone(d));
+  store.systems = store.systems.filter((s) => !(RETIRED_SYSTEM_IDS.includes(s.id) && !usedIds.has(s.id)));
+  store.systems.forEach((s) => { if (RETIRED_SYSTEM_IDS.includes(s.id)) s.retired = true; });
+  for (const p of CLIST_PRICE_PLACEHOLDERS) if (!store.prices.some((x) => x.code === p.code)) store.prices.push(clone(p));
+  write(KEYS.version, LIBRARY_VERSION);
+  store.save('systems'); store.save('prices');
+}
+migrateLibrary();
 
 function deepMerge(base, over) {
   if (!over || typeof over !== 'object') return base;

@@ -26,7 +26,41 @@ and can be exported/imported as JSON or pushed to a webhook (n8n / Make / Odoo).
 6. **Settings** — company, VAT, profit, overhead, waste, bar length/kerf, labour rates per category, terms,
    webhook, backup/restore.
 
-## Built-in systems (mm; converted from the factory cm sheets)
+## Importing supplier bills (price book with history)
+
+`#/import` accepts up to hundreds of files per run. `.xlsx` / `.csv` are parsed in the browser (no library, no
+server) with a column-mapping step; `.pdf` / `.jpg` / `.png` bills are read by Claude (your own API key in
+Settings → AI, called directly from the browser). Every extracted line is matched to the price book
+(exact code → supplier section number → similar name → new) and shown for review with the current price and
+the % change before anything is applied. Applying keeps the previous price in the item's history; swings over
+5 % are flagged in the price book.
+
+## Reading drawings and site photos
+
+Estimator → "Read openings from drawing / photo (AI)": upload elevations, window schedules or measurement
+photos; the reader returns marks, types, W × H (converted to mm), fixed-light heights and quantities, suggests a
+system per row from the library, and adds the selected rows to a quotation after you check them.
+
+## Built-in systems (mm)
+
+### From the factory workbook `WINDOWS_C_LIST.xlsx` (formulas copied 1:1, marked "factory sheet")
+
+| Sheet | Pieces |
+|---|---|
+| SLIDING | FRAME W = W+86 ×2 · FRAME H = H+86 ×2 · SASH W = (W+10)/2 ×4 · SASH H = H−58 ×4 · INTERLOCK = H−58 ×2 |
+| SLIDING WITH FIX | + SASH H / INTERLOCK = H−FIX−40 · TRANSOM = W−74 · TR ADP W = W−74 / H = FIX−55 ×2 · G BEAD W = W−88 / H = FIX−109 ×2 |
+| HINGED WITH FIX | FRAME = W+80 / H+80 ×2 · SASH W = W−34 ×2 · SASH H = H−FIX−25 ×2 · TRANSOM = W−46 · sash bead W−138 / SASH H−148 · G BEAD W−46 / FIX−81 |
+| HINGED WITH 2 FIX | SASH H = H−2·FIX−16 · TRANSOM ×2 · G BEAD ×4 |
+| FIXED | FRAME = W+80 / H+80 ×2 · G BEAD W = W−46 ×2 · G BEAD H = H−90 ×2 |
+| DOOR 1 LEAF | FRAME W = W+80 ×1 · FRAME H = H+40 ×2 · SASH W = W−34 ×1 · SASH H = H−24 ×2 · sash bead W−176 / SASH H−214 · THRESHOLD = W−176 (section 1283) |
+| DOOR WITH FIX | FRAME H = H+80 ×2 · SASH H = H−FIX−17 ×2 · TRANSOM = W−46 · G BEAD W−46 / FIX−81 · THRESHOLD = W−176 |
+
+Area and drawings use the frame outer size (W+86 × H+86 for sliding, W+80 × H+80 for hinged/fixed/door).
+Glass sizes and hardware are not on the sheets and are left empty and flagged until confirmed. Profile codes named
+by the sheet drawings: 1210/1211 (sliding frame), 2154 (transom adaptor), 1283 (threshold); other profiles are
+`TBD_…` placeholders to be assigned in the Price book.
+
+### From the skill files (factory cm sheets converted to mm, marked "not verified" until the factory confirms)
 
 | System | Deductions |
 |---|---|
@@ -34,11 +68,9 @@ and can be exported/imported as JSON or pushed to a webhook (n8n / Make / Odoo).
 | Saraya 105 fixed (optional centre mullion) | frame −96; glass −62; bead W−52 / H−96; mullion: glass W/2−50, T H−52 |
 | Saraya 105 top-hung over fixed | sash W−227.5 × H/2−215.5; sash glass W−192 × H/2−180; fixed glass W−62 × H/2−50 |
 | Royal 120 two-panel (Kw/Dh/Dg model) | Sash = W/2+25 × H−60(65); glass −125 |
-| Box 12 cm hinged door (1/2 leaves) | generic constants — adjust to the factory sheet |
-| SG50 stick curtain wall (NCOL × NROW grid) | mullions (NCOL+1) × H, transoms per module, glass = module − 20 |
 
-Profiles that have no supplier price yet (802995, 802988, door leaf/bead, brackets, corner cleats, fly rollers)
-are included with price 0 so they appear as warnings rather than being silently omitted.
+Profiles that have no supplier price yet are included with price 0 so they appear as warnings rather than being
+silently omitted. Two earlier systems whose deductions were assumptions (generic Box door, SG50 grid) were removed.
 
 ## Formula language
 

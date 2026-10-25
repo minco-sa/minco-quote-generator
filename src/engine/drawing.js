@@ -17,8 +17,9 @@ function resolve(spec, vars, fallback) {
  * @param {object} [opts]  { width: svg px width, title, showGlassLabels }
  */
 export function elevationSVG(system, vars, glass = [], opts = {}) {
-  const W = Number(vars.W) || 1000, H = Number(vars.H) || 1000;
   const d = system.drawing || { type: 'fixed' };
+  const W = Number(opts.productW ?? resolve(system.areaW, vars, vars.W)) || Number(vars.W) || 1000;
+  const H = Number(opts.productH ?? resolve(system.areaH, vars, vars.H)) || Number(vars.H) || 1000;
   const px = opts.width || 420;
   const margin = 70; // room for dimension lines
   const scale = Math.min((px - 2 * margin) / W, (px * 0.9 - 2 * margin) / H);
@@ -102,19 +103,36 @@ export function elevationSVG(system, vars, glass = [], opts = {}) {
     rect(ix, iy + half - sashT / 2, iw, sashT, 'mullion');
     rect(ix, iy + half + sashT / 2, iw, half - sashT / 2, 'glass');
     glassLabel(ix, iy + half, iw, half, glass[1]);
-  } else if (type === 'door') {
+  } else if (type === 'door' || type === 'casement') {
     const leaves = Math.max(1, Math.round(Number(resolve(d.leaves, vars, 1)) || 1));
+    const fixTop = Number(resolve(d.fixTop, vars, 0)) || 0;
+    const fixBottom = Number(resolve(d.fixBottom, vars, 0)) || 0;
+    let sy = iy, sh = ih;
+    if (fixTop > 0) {
+      const th = Math.max(0, fixTop * scale - frameT);
+      rect(ix, iy, iw, th, 'glass'); text(ix + iw / 2, iy + th * 0.55, 'FIXED', 'lbl', 'text-anchor="middle"');
+      glassLabel(ix, iy, iw, th * 0.6, glass[1]);
+      rect(ix, iy + th, iw, sashT, 'mullion');
+      sy = iy + th + sashT; sh -= th + sashT;
+    }
+    if (fixBottom > 0) {
+      const bh = Math.max(0, fixBottom * scale - frameT);
+      rect(ix, iy + ih - bh, iw, bh, 'glass'); text(ix + iw / 2, iy + ih - bh * 0.45, 'FIXED', 'lbl', 'text-anchor="middle"');
+      rect(ix, iy + ih - bh - sashT, iw, sashT, 'mullion');
+      sh -= bh + sashT;
+    }
     const pw = iw / leaves;
     for (let i = 0; i < leaves; i++) {
       const x = ix + i * pw;
-      rect(x, iy, pw, ih, 'sash');
-      rect(x + sashT * 2, iy + sashT * 2, pw - 4 * sashT, ih - 4 * sashT, 'glass');
-      glassLabel(x, iy, pw, ih, glass[0]);
-      hingeTriangle(x, iy, pw, ih, i === 0 ? 'left' : 'right');
-      // handle
+      rect(x, sy, pw, sh, 'glass');
+      rect(x, sy, pw, sh, 'sash');
+      rect(x + sashT * 2, sy + sashT * 2, pw - 4 * sashT, sh - 4 * sashT, 'glass');
+      glassLabel(x, sy, pw, sh, glass[0]);
+      hingeTriangle(x, sy, pw, sh, i === 0 ? 'left' : 'right');
       const hx = i === 0 ? x + pw - sashT * 3 : x + sashT * 3;
-      rect(hx - 2, iy + ih * 0.48, 4, ih * 0.06, 'mullion');
+      rect(hx - 2, sy + sh * 0.48, 4, Math.max(6, sh * 0.06), 'mullion');
     }
+    if (type === 'door') rect(ox, oy + h - frameT * 0.6, w, frameT * 0.6, 'frame');
   } else if (type === 'grid') {
     const cols = Math.max(1, Math.round(Number(resolve(d.cols, vars, 1)) || 1));
     const rows = Math.max(1, Math.round(Number(resolve(d.rows, vars, 1)) || 1));

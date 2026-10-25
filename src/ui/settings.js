@@ -41,6 +41,12 @@ export function renderSettings(container) {
         ${field('Webhook secret header (X-Webhook-Secret)', input('webhookSecret', s.webhookSecret))}
         <p class="sub">Payload: <span class="mono">{ event, ref, status, client, project, totals, items[ {takeoff, unit breakdown} ], odoo.sale_order_lines[] }</span>. Shop-drawing export adds <span class="mono">mrp.bom_lines[]</span>.</p>
       </div></div>
+      <div class="card"><h2>AI — Claude API (bills & drawings reading)</h2><div class="grid">
+        ${field('Anthropic API key (stored only in this browser)', input('aiApiKey', s.aiApiKey || '', { type: 'password', placeholder: 'sk-ant-…' }))}
+        <div class="grid c2">${field('Model', input('aiModel', s.aiModel || 'claude-opus-5-5'))}
+        <label class="f"><span>Server-side fallback on safety declines</span><span class="flex"><label><input type="checkbox" data-path="aiFallback" ${s.aiFallback !== false ? 'checked' : ''}> enabled</label></span></label></div>
+        <p class="sub">Used by <a href="#/import">Import bills</a> (PDF / photo invoices) and the Estimator's drawing reader. Requests go directly from your browser to api.anthropic.com; nothing is proxied. Excel/CSV imports and all costing work without a key.</p>
+      </div></div>
       <div class="card"><h2>Backup & library</h2><div class="actions">
         <button class="btn" data-act="export">Download full backup (JSON)</button><button class="btn" data-act="import">Restore backup</button>
         <button class="btn" data-act="reset-sys">Reset systems to defaults</button><button class="btn bad" data-act="wipe">Erase everything</button></div>
