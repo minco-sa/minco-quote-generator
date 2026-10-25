@@ -21,4 +21,13 @@ test('system suggestion from opening type', () => {
   assert.equal(suggestSystem({ type: 'door', fix_height_mm: 500 }, DEFAULT_SYSTEMS), 'CL_DOOR_FIX');
   assert.equal(suggestSystem({ type: 'fixed', fix_height_mm: 0 }, DEFAULT_SYSTEMS), 'CL_FIXED');
 });
+import { normalizeUnit, normalizeCategory } from '../src/import/invoices.js';
+test('marefty CSV headers map automatically', () => {
+  const g = guessColumns(['الفئة', 'المورد', 'الكود', 'الصنف', 'الوحدة', 'آخر سعر قبل الضريبة', 'شامل الضريبة 15%', 'المدى', 'التاريخ', 'المصدر (Inv=فاتورة / Q=عرض سعر)']);
+  assert.deepEqual([g.code, g.name, g.unit, g.price, g.supplier, g.date, g.category, g.source], ['الكود', 'الصنف', 'الوحدة', 'آخر سعر قبل الضريبة', 'المورد', 'التاريخ', 'الفئة', 'المصدر (Inv=فاتورة / Q=عرض سعر)']);
+});
+test('arabic units and categories', () => {
+  assert.equal(normalizeUnit('حبة', 'profile'), 'bar'); assert.equal(normalizeUnit('حبة', 'accessory'), 'pc'); assert.equal(normalizeUnit('م²'), 'm2'); assert.equal(normalizeUnit('كجم'), 'kg'); assert.equal(normalizeUnit('roll'), 'roll');
+  assert.equal(normalizeCategory('قطاعات ألمنيوم / سرايا (Saraya) — أسود'), 'profile'); assert.equal(normalizeCategory('قطاعات ألمنيوم / إكسسوارات وربل الضحيان'), 'accessory'); assert.equal(normalizeCategory('زجاج (SAR/m²)'), 'glass'); assert.equal(normalizeCategory('طلاء / دهان الألمنيوم'), 'service'); assert.equal(normalizeCategory('تيب وحماية'), 'consumable');
+});
 console.log(`${n} import tests passed`);

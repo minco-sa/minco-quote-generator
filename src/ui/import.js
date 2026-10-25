@@ -1,12 +1,13 @@
 // Bulk import of supplier bills into the price book: XLSX/CSV (local parse + column mapping) and PDF/photo (AI extraction).
 import { store } from '../store.js';
 import { readXlsx } from '../import/xlsx.js';
-import { extractInvoice, detectSupplier, matchLine, normalizeUnit, guessCategory, guessColumns, SUPPLIER_IDS } from '../import/invoices.js';
+import { extractInvoice, detectSupplier, matchLine, normalizeUnit, normalizeCategory, guessCategory, guessColumns } from '../import/invoices.js';
 import { esc, money, num, parseCSV, toast, navigate } from './helpers.js';
 
 const state = { queue: [], lines: [], running: false, log: [] };
-const FIELDS = [['code', 'Code'], ['name', 'Description'], ['unit', 'Unit'], ['price', 'Unit price (excl. VAT)'], ['qty', 'Qty'], ['supplier', 'Supplier'], ['date', 'Date'], ['source', 'Invoice / source']];
+const FIELDS = [['code', 'Code'], ['name', 'Description'], ['category', 'Category (optional)'], ['unit', 'Unit'], ['price', 'Unit price (excl. VAT)'], ['qty', 'Qty'], ['supplier', 'Supplier'], ['date', 'Date'], ['source', 'Invoice / source']];
 const UNITS = ['bar', 'pc', 'm', 'm2', 'kg', 'roll'];
+const normDate = (d) => { const s = String(d || '').trim(); let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); if (m) return `${m[1]}-${m[2]}-${m[3]}`; m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s); if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`; return ''; };
 const CATS = ['profile', 'glass', 'accessory', 'consumable', 'service'];
 
 export function renderImport(container) {
@@ -54,9 +55,12 @@ export function renderImport(container) {
 
   const addLine = (raw, meta) => {
     const price = Number(raw.price) || 0;
-    const line = { code: String(raw.code || '').trim(), description: raw.name || '', unit: normalizeUnit(raw.unit), price, supplier: raw.supplier || meta.supplier || '', date: raw.date || meta.date || '', source: raw.source || meta.source || '', qty: raw.qty };
-    const match = matchLine({ code: line.code, description: line.description, unit: line.unit }, store.prices);
-    state.lines.push({ ...line, name: line.description, applyCode: match.code || line.code || '', category: match.candidate?.category || guessCategory({ unit: line.unit, description: line.description }), match, selected: price > 0 && (match.status === 'new' || !match.candidate || Number(match.candidate.price) !== price), file: meta.file });
+    const givenCat = normalizeCategory(raw.category);
+    const line = { code: String(raw.code || '').trim(), description: raw.name || '', price, supplier: detectSupplier({ supplier_name: raw.supplier || '' }) || raw.supplier || meta.supplier || '', date: normDate(raw.date) || meta.date || '', source: raw.source || meta.source || '', qty: raw.qty };
+    const match = matchLine({ code: line.code, description: line.description }, store.prices);
+    const category = match.candidate?.category || givenCat || guessCategory({ unit: normalizeUnit(raw.unit), description: line.description });
+    line.unit = match.candidate?.unit || normalizeUnit(raw.unit, category);
+    state.lines.push({ ...line, name: line.description, applyCode: match.code || line.code || '', category, match, selected: price > 0 && (match.status === 'new' || !match.candidate || Number(match.candidate.price) !== price), file: meta.file });
   };
 
   const processSheet = (f, mapping) => {
@@ -69,7 +73,7 @@ export function renderImport(container) {
       if (!String(get('code') || get('name')).trim()) continue;
       const price = Number(String(get('price')).replace(/[^\d.\-]/g, ''));
       if (!Number.isFinite(price)) continue;
-      addLine({ code: get('code'), name: get('name'), unit: String(get('unit') || '').toLowerCase(), price, qty: get('qty'), supplier: get('supplier'), date: get('date'), source: get('source') }, { file: f.name, source: `Sheet ${f.name}` });
+      addLine({ code: get('code'), name: get('name'), category: get('category'), unit: String(get('unit') || ''), price, qty: get('qty'), supplier: get('supplier'), date: get('date'), source: get('source') }, { file: f.name, source: `Sheet ${f.name}` });
       n++;
     }
     f.lines = n; f.status = 'extracted'; f.mapped = true;

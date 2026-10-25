@@ -187,7 +187,7 @@ const SKILL_SYSTEMS = [
     mincoCode: 'SL120',
     description: 'Generic 2-panel model: Sash_W = W/2 + Kw; Sash_H = H − Dh; Glass = Sash − Dg. Royal 120: Kw 25, Dh 60 (std rollers) / 65 (high), Dg 125 (130 heavy DGU). Change the constants for any other 2-panel system.',
     barLength: 6000, waste: 0.05, rounding: 1,
-    defaultGlassKey: 'GL_DGU24_HDGREY_TGF',
+    defaultGlassKey: 'GL_DGU24_TINTED',
     constants: [
       { key: 'KW', label: 'Kw — sash width increase', value: 25 },
       { key: 'DG', label: 'Dg — glass deduction', value: 125 },
@@ -232,7 +232,7 @@ export const DEFAULT_SYSTEMS = [...CLIST_SYSTEMS, ...SKILL_SYSTEMS];
 
 /** Systems removed from the library because their deductions were assumptions, not factory data. */
 export const RETIRED_SYSTEM_IDS = ['BOX_HINGED_DOOR', 'SG50_STICK_CW'];
-export const LIBRARY_VERSION = 2;
+export const LIBRARY_VERSION = 3;
 
 export const CATEGORIES = [
   { id: 'sliding', label: 'Sliding windows & doors' },

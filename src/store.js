@@ -135,6 +135,14 @@ function migrateLibrary() {
   store.systems = store.systems.filter((s) => !(RETIRED_SYSTEM_IDS.includes(s.id) && !usedIds.has(s.id)));
   store.systems.forEach((s) => { if (RETIRED_SYSTEM_IDS.includes(s.id)) s.retired = true; });
   for (const p of CLIST_PRICE_PLACEHOLDERS) if (!store.prices.some((x) => x.code === p.code)) store.prices.push(clone(p));
+  if (v < 3) {
+    // v3: price book rebuilt from marefty_purchase_prices.csv (2026-10-25) — previous prices move to history.
+    for (const p of DEFAULT_PRICES) store.upsertPrice(clone(p));
+    for (const q of store.quotes) for (const it of q.items || []) if (['GL_DGU24_HDGREY_TGF', 'GL_6_CLEAR_TMP_SEC'].includes(it.glassKey) && !store.prices.some((x) => x.code === it.glassKey)) it.glassKey = '';
+    const stale = ['BOX_LEAF', 'BOX_BEAD', 'ACC_CW_BRACKET', 'ACC_DOOR_LOCK', 'ACC_DOOR_CLOSER', 'ACC_DOOR_HINGE'];
+    store.prices = store.prices.filter((x) => !(stale.includes(x.code) && !(Number(x.price) > 0)));
+    if (!store.settings.defaultGlassKey || store.settings.defaultGlassKey === 'GL_6_CLEAR_TMP_SEC') { store.settings.defaultGlassKey = 'GL_DGU24_TINTED'; store.save('settings'); }
+  }
   write(KEYS.version, LIBRARY_VERSION);
   store.save('systems'); store.save('prices');
 }

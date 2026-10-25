@@ -19,7 +19,7 @@ export const CLIST_SYSTEMS = [
     id: 'CL_SLIDING_2P', name: 'Sliding window — 2 panels (sheet: SLIDING)', nameAr: 'شباك سحاب درفتين', category: 'sliding',
     supplier: 'DHY', family: '120 series (sections 1210 / 1211)', source: SRC, verified: true, glassNote: NOGLASS,
     description: 'Sheet SLIDING: FRAME W = W+86 ×2 · FRAME H = H+86 ×2 · SASH W = (W+10)/2 ×4 · SASH H = H−58 ×4 · INTERLOCK = H−58 ×2.',
-    barLength: 6000, waste: 0.05, rounding: 1, areaW: 'W + 86', areaH: 'H + 86',
+    barLength: 6000, waste: 0.05, rounding: 1, defaultGlassKey: 'GL_DGU24_TINTED', areaW: 'W + 86', areaH: 'H + 86',
     params: paramsWH(2000, 1500),
     variables: [
       { key: 'FRAME_W', label: 'Frame W', expr: 'W + 86' }, { key: 'FRAME_H', label: 'Frame H', expr: 'H + 86' },
@@ -38,7 +38,7 @@ export const CLIST_SYSTEMS = [
     id: 'CL_SLIDING_2P_FIX', name: 'Sliding window — 2 panels + 1 fixed (sheet: SLIDING WITH FIX)', nameAr: 'شباك سحاب درفتين مع ثابت', category: 'sliding',
     supplier: 'DHY', family: '120 series (sections 1210 / 1211, adaptor 2154)', source: SRC, verified: true, glassNote: NOGLASS,
     description: 'Sheet SLIDING WITH FIX: FRAME W = W+86 ×2 · FRAME H = H+86 ×2 · SASH W = (W+10)/2 ×4 · SASH H = H−FIX−40 ×4 · INTERLOCK = H−FIX−40 ×2 · TRANSOM = W−74 ×1 · TR ADP W = W−74 / TR ADP H = FIX−55 ×2 · G BEAD W = W−88 ×2 · G BEAD H = FIX−109 ×2.',
-    barLength: 6000, waste: 0.05, rounding: 1, areaW: 'W + 86', areaH: 'H + 86',
+    barLength: 6000, waste: 0.05, rounding: 1, defaultGlassKey: 'GL_DGU24_TINTED', areaW: 'W + 86', areaH: 'H + 86',
     params: [...paramsWH(2000, 2400), paramFix(600)],
     variables: [
       { key: 'FRAME_W', expr: 'W + 86' }, { key: 'FRAME_H', expr: 'H + 86' },
@@ -61,7 +61,7 @@ export const CLIST_SYSTEMS = [
     id: 'CL_HINGED_FIX', name: 'Hinged window + 1 fixed (sheet: HINGED WITH FIX)', nameAr: 'شباك مفصلي مع ثابت', category: 'hung',
     supplier: 'DHY', family: 'Hinged series (sections to assign)', source: SRC, verified: true, glassNote: NOGLASS,
     description: 'Sheet HINGED WITH FIX: FRAME W = W+80 ×2 · FRAME H = H+80 ×2 · SASH W = W−34 ×2 · SASH H = H−FIX−25 ×2 · TRANSOM = W−46 ×1 · SASH G BEAD W = W−138 ×2 · SASH G BEAD H = SASH H−148 ×2 · G BEAD W = W−46 ×2 · G BEAD H = FIX−81 ×2.',
-    barLength: 6000, waste: 0.05, rounding: 1, areaW: 'W + 80', areaH: 'H + 80',
+    barLength: 6000, waste: 0.05, rounding: 1, defaultGlassKey: 'GL_DGU24_TINTED', areaW: 'W + 80', areaH: 'H + 80',
     params: [...paramsWH(1000, 1500), paramFix(400)],
     variables: [
       { key: 'FRAME_W', expr: 'W + 80' }, { key: 'FRAME_H', expr: 'H + 80' },
@@ -82,7 +82,7 @@ export const CLIST_SYSTEMS = [
     id: 'CL_HINGED_2FIX', name: 'Hinged window + 2 fixed (sheet: HINGED WITH 2 FIX)', nameAr: 'شباك مفصلي مع ثابتين', category: 'hung',
     supplier: 'DHY', family: 'Hinged series (sections to assign)', source: SRC, verified: true, glassNote: NOGLASS,
     description: 'Sheet HINGED WITH 2 FIX: FRAME W = W+80 ×2 · FRAME H = H+80 ×2 · SASH W = W−34 ×2 · SASH H = H−2·FIX−16 ×2 · TRANSOM = W−46 ×2 · SASH G BEAD W = W−138 ×2 · SASH G BEAD H = SASH H−148 ×2 · G BEAD W = W−46 ×4 · G BEAD H = FIX−81 ×4.',
-    barLength: 6000, waste: 0.05, rounding: 1, areaW: 'W + 80', areaH: 'H + 80',
+    barLength: 6000, waste: 0.05, rounding: 1, defaultGlassKey: 'GL_DGU24_TINTED', areaW: 'W + 80', areaH: 'H + 80',
     params: [...paramsWH(1000, 2000), paramFix(400)],
     variables: [
       { key: 'FRAME_W', expr: 'W + 80' }, { key: 'FRAME_H', expr: 'H + 80' },
@@ -103,7 +103,7 @@ export const CLIST_SYSTEMS = [
     id: 'CL_FIXED', name: 'Fixed window (sheet: FIXED)', nameAr: 'شباك ثابت', category: 'fixed',
     supplier: 'DHY', family: 'Hinged series frame (sections to assign)', source: SRC, verified: true, glassNote: NOGLASS,
     description: 'Sheet FIXED: FRAME W = W+80 ×2 · FRAME H = H+80 ×2 · G BEAD W = W−46 ×2 · G BEAD H = H−90 ×2.',
-    barLength: 6000, waste: 0.05, rounding: 1, areaW: 'W + 80', areaH: 'H + 80',
+    barLength: 6000, waste: 0.05, rounding: 1, defaultGlassKey: 'GL_DGU24_TINTED', areaW: 'W + 80', areaH: 'H + 80',
     params: paramsWH(1000, 1000),
     variables: [
       { key: 'FRAME_W', expr: 'W + 80' }, { key: 'FRAME_H', expr: 'H + 80' },
@@ -120,7 +120,7 @@ export const CLIST_SYSTEMS = [
     id: 'CL_DOOR_1LEAF', name: 'Door — 1 leaf (sheet: DOOR 1 LEAF)', nameAr: 'باب درفة واحدة', category: 'door',
     supplier: 'DHY', family: 'Door series (threshold section 1283)', source: SRC, verified: true, glassNote: NOGLASS,
     description: 'Sheet DOOR 1 LEAF: FRAME W = W+80 ×1 · FRAME H = H+40 ×2 · SASH W = W−34 ×1 · SASH H = H−24 ×2 · SASH G BEAD W = W−176 ×2 · SASH G BEAD H = SASH H−214 ×2 · THRESHOLD = W−176 ×1.',
-    barLength: 6000, waste: 0.05, rounding: 1, areaW: 'W + 80', areaH: 'H + 40',
+    barLength: 6000, waste: 0.05, rounding: 1, defaultGlassKey: 'GL_DGU24_TINTED', areaW: 'W + 80', areaH: 'H + 40',
     params: paramsWH(900, 2100),
     variables: [
       { key: 'FRAME_W', expr: 'W + 80' }, { key: 'FRAME_H', expr: 'H + 40' },
@@ -140,7 +140,7 @@ export const CLIST_SYSTEMS = [
     id: 'CL_DOOR_FIX', name: 'Door + fixed light (sheet: DOOR WITH FIX)', nameAr: 'باب مع ثابت', category: 'door',
     supplier: 'DHY', family: 'Door series (threshold section 1283)', source: SRC, verified: true, glassNote: NOGLASS,
     description: 'Sheet DOOR WITH FIX: FRAME W = W+80 ×1 · FRAME H = H+80 ×2 · SASH W = W−34 ×1 · SASH H = H−FIX−17 ×2 · TRANSOM = W−46 ×1 · SASH G BEAD W = W−176 ×2 · SASH G BEAD H = SASH H−214 ×2 · G BEAD W = W−46 ×2 · G BEAD H = FIX−81 ×2 · THRESHOLD = W−176 ×1.',
-    barLength: 6000, waste: 0.05, rounding: 1, areaW: 'W + 80', areaH: 'H + 80',
+    barLength: 6000, waste: 0.05, rounding: 1, defaultGlassKey: 'GL_DGU24_TINTED', areaW: 'W + 80', areaH: 'H + 80',
     params: [...paramsWH(900, 2600), paramFix(500)],
     variables: [
       { key: 'FRAME_W', expr: 'W + 80' }, { key: 'FRAME_H', expr: 'H + 80' },

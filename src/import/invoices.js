@@ -90,8 +90,21 @@ export function matchLine(line, priceBook) {
   return { status: 'new', code: code || '', candidate: null, suggestion: best && bestScore >= 0.35 ? best : null };
 }
 
-const UNIT_MAP = { bar: 'bar', pc: 'pc', m: 'm', m2: 'm2', kg: 'kg', roll: 'roll', box: 'pc', sheet: 'pc', other: 'pc' };
-export const normalizeUnit = (u) => UNIT_MAP[u] || 'pc';
+const UNIT_MAP = { bar: 'bar', pc: 'pc', m: 'm', m2: 'm2', kg: 'kg', roll: 'roll', box: 'pc', sheet: 'pc', other: 'pc', length: 'bar', 'حبة': 'pc', 'عود': 'bar', 'قطعة': 'pc', 'م²': 'm2', 'م2': 'm2', 'متر مربع': 'm2', 'متر': 'm', 'م.ط': 'm', 'م': 'm', 'كجم': 'kg', 'كيلو': 'kg', 'لفة': 'roll', 'رول': 'roll', 'كرتون': 'pc', 'علبة': 'pc' };
+/** Normalize a unit label (English/Arabic). `category` turns a generic piece (حبة) into a bar for profiles. */
+export const normalizeUnit = (u, category) => { const k = String(u || '').trim().toLowerCase().replace(/\s+/g, ' '); const base = UNIT_MAP[k] || UNIT_MAP[String(u || '').trim()] || (/^m2|sqm|sq\.?m/.test(k) ? 'm2' : /box/.test(k) ? 'pc' : 'pc'); return base === 'pc' && category === 'profile' && /حبة|^pc$|^$|length/.test(k) ? 'bar' : base; };
+
+/** Map a free-text category label (Arabic/English) to a price-book category. */
+export function normalizeCategory(label) {
+  const c = norm(label);
+  if (!c) return '';
+  if (/تيب|مستهلك|consumable|tape|disc|blade/.test(c)) return 'consumable';
+  if (/إكسسوار|اكسسوار|ربل|براغي|سيليكون|hardware|accessor|gasket|screw|silicone|حديد|steel/.test(c)) return 'accessory';
+  if (/زجاج|glass/.test(c)) return 'glass';
+  if (/طلاء|دهان|coating|paint|service/.test(c)) return 'service';
+  if (/قطاع|profile|aluminium|aluminum/.test(c)) return 'profile';
+  return '';
+}
 
 /** Guess category from unit/description. */
 export function guessCategory(line) {
@@ -111,10 +124,11 @@ export function guessColumns(headers) {
     code: find(/^code$/, /كود|رقم الصنف|item ?code|sku|part|رمز/),
     name: find(/^name$|description|الوصف|البيان|اسم الصنف|^item$|^الصنف$|المادة|^desc/),
     unit: find(/^unit$|الوحدة|uom/),
-    price: find(/unit ?price|السعر|سعر الوحدة|^price$|rate/),
+    price: find(/قبل الضريبة|unit ?price|سعر الوحدة|السعر|^سعر|^price$|rate|excl/),
+    category: find(/الفئة|category|التصنيف|group/),
     qty: find(/^qty$|quantity|الكمية|العدد/),
     supplier: find(/supplier|المورد|vendor/),
     date: find(/date|التاريخ/),
-    source: find(/invoice|فاتورة|source|ref|المرجع/),
+    source: find(/invoice|فاتورة|source|المصدر|ref|المرجع/),
   };
 }
