@@ -17,7 +17,7 @@ export const DEFAULT_SETTINGS = {
   wasteGlass: 0.05,
   wasteAccessories: 0.0,
   paintingPerKg: 1.6,
-  defaultGlassKey: 'GL_6_CLEAR_TMP_SEC',
+  defaultGlassKey: 'GL_DGU24_TINTED',
   barLength: 6000,
   kerf: 5,
   endTrim: 0,
@@ -44,6 +44,10 @@ export const DEFAULT_SETTINGS = {
   ],
   webhookUrl: '',
   webhookSecret: '',
+  // AI (Claude API) — key stored only in this browser
+  aiApiKey: '',
+  aiModel: 'claude-opus-5-5',
+  aiFallback: true,
 };
 
 export const QUOTE_STATUSES = [

@@ -66,8 +66,13 @@ export function takeoff(system, inputs) {
       accessories.push({ code: a.code || '', name: a.name, unit: a.unit || 'pc', priceKey: a.priceKey || a.code, qty: a.unit === 'pc' || !a.unit ? Math.ceil(qty) : Math.round(qty * 100) / 100 });
     } catch (e) { warnings.push(e.message); }
   }
-  const W = Number(vars.W) || 0, H = Number(vars.H) || 0;
-  return { vars, pieces, glass, accessories, areaM2: (W * H) / 1e6, perimeterM: (2 * (W + H)) / 1000, warnings };
+  let W = Number(vars.W) || 0, H = Number(vars.H) || 0;
+  // Product (frame outer) size for area, labour and drawings — defaults to W × H when the system does not define it.
+  try { if (system.areaW) W = evalNumber(system.areaW, vars, 'areaW'); if (system.areaH) H = evalNumber(system.areaH, vars, 'areaH'); }
+  catch (e) { warnings.push(e.message); }
+  if (!(system.glass || []).length) warnings.push('Glass sizes are not defined for this system — glass is NOT costed');
+  if (!(system.accessories || []).length) warnings.push('Accessories are not defined for this system — hardware is NOT costed');
+  return { vars, pieces, glass, accessories, areaM2: (W * H) / 1e6, productW: W, productH: H, perimeterM: (2 * (W + H)) / 1000, warnings };
 }
 
 /** Lookup a price-book entry. */

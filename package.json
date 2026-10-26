@@ -5,7 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "node tests/run.mjs",
+    "test": "node tests/run.mjs && node tests/import.test.mjs && node tests/search.test.mjs",
     "start": "python3 -m http.server 8080"
   },
   "license": "UNLICENSED"

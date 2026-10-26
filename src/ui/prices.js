@@ -12,13 +12,13 @@ export function renderPrices(container) {
     const old = (d) => d && (Date.now() - new Date(d).getTime()) > 90 * 86400000;
     container.innerHTML = `
       <div class="flex" style="margin-bottom:12px"><h1 style="margin:0">Price book</h1><span class="sub">purchase prices, SAR excl. VAT</span><span class="spacer"></span>
-        <button class="btn" data-act="import">Import CSV</button><button class="btn" data-act="export">Export CSV</button><button class="btn" data-act="reset">Reset to defaults</button><button class="btn p" data-act="add">+ Add price</button></div>
+        <a class="btn p" href="#/import">Import bills (XLSX / PDF / photo)</a><button class="btn" data-act="import">Import CSV</button><button class="btn" data-act="export">Export CSV</button><button class="btn" data-act="reset">Reset to defaults</button><button class="btn p" data-act="add">+ Add price</button></div>
       <div class="card">
         <div class="flex" style="margin-bottom:10px">
           <select class="i" style="max-width:180px" data-f="cat"><option value="all">All categories</option>${CATS.map((c) => `<option value="${c}" ${state.cat === c ? 'selected' : ''}>${c}</option>`).join('')}</select>
           <input class="i" style="max-width:280px" data-f="q" placeholder="Search code / name / supplier" value="${esc(state.q)}">
           <span class="sub">${list.length} of ${store.prices.length} · <span class="tag miss">no price</span> = fill in · <span class="tag">old</span> = older than 90 days</span></div>
-        <div style="overflow-x:auto"><table class="t"><thead><tr><th>Code</th><th>Item</th><th>Category</th><th>Unit</th><th class="n">Price</th><th class="n">Min m²/lite</th><th>Supplier</th><th>Date</th><th>Source</th><th></th></tr></thead><tbody>
+        <div style="overflow-x:auto"><table class="t"><thead><tr><th>Code</th><th>Item</th><th>Category</th><th>Unit</th><th class="n">Price</th><th class="n">Min m²/lite</th><th>Supplier</th><th>Date</th><th>Source</th><th>History</th><th></th></tr></thead><tbody>
           ${list.map((p) => `<tr data-code="${esc(p.code)}">
             <td class="mono">${esc(p.code)}</td>
             <td><input class="i sm" data-k="name" value="${esc(p.name)}" style="min-width:260px"> ${!(Number(p.price) > 0) ? '<span class="tag miss">no price</span>' : ''} ${old(p.date) ? '<span class="tag">old</span>' : ''}</td>
@@ -29,6 +29,7 @@ export function renderPrices(container) {
             <td><input class="i sm" data-k="supplier" value="${esc(p.supplier || '')}" style="width:70px" title="${esc(SUPPLIERS[p.supplier] || '')}"></td>
             <td><input class="i sm" type="date" data-k="date" value="${esc(p.date || '')}"></td>
             <td><input class="i sm" data-k="source" value="${esc(p.source || '')}" style="width:110px"></td>
+            <td class="sub" title="${esc((p.history || []).map((h) => `${h.price} · ${h.date} · ${h.source}`).join('\n'))}">${(p.history || []).length ? `${(p.history || []).length}× · ${(() => { const r = store.priceRange(p); return r && r.max > r.min * 1.05 ? `<span class="tag">${money(r.min)}–${money(r.max)}</span>` : ''; })()}` : ''}</td>
             <td><button class="btn sm bad" data-del="${esc(p.code)}">✕</button></td></tr>`).join('')}
         </tbody></table></div>
         <p class="sub">Suppliers: ${Object.entries(SUPPLIERS).map(([k, v]) => `<b>${k}</b> ${esc(v)}`).join(' · ')}</p>

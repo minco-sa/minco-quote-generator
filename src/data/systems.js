@@ -26,10 +26,13 @@ const SLIDING_ACCESSORIES = [
   { code: '564416', name: 'Silicone black 300 ml (1 tube / 8 lm)', unit: 'pc', qty: 'ceil(2 * (W + H) / 1000 / 8)' },
 ];
 
-export const DEFAULT_SYSTEMS = [
+import { CLIST_SYSTEMS } from './systems-clist.js';
+
+// Systems from Abdullah's skill files (factory cm sheets converted to mm).
+const SKILL_SYSTEMS = [
   // =====================================================================================
   {
-    id: 'SARAYA_120_SLIDING',
+    id: 'SARAYA_120_SLIDING', supplier: 'DHY', family: 'Saraya 120', source: 'aluminum-fabrication-calculator skill (factory cm sheet)', verified: false,
     name: 'Saraya 120 — Sliding window / door',
     nameAr: 'سرايا 120 سحاب',
     category: 'sliding',
@@ -98,7 +101,7 @@ export const DEFAULT_SYSTEMS = [
   },
   // =====================================================================================
   {
-    id: 'SARAYA_105_FIXED',
+    id: 'SARAYA_105_FIXED', supplier: 'DHY', family: 'Saraya 105', source: 'aluminum-fabrication-calculator skill (factory cm sheet)', verified: false,
     name: 'Saraya 105 — Fixed window',
     nameAr: 'سرايا 105 ثابت',
     category: 'fixed',
@@ -133,7 +136,7 @@ export const DEFAULT_SYSTEMS = [
   },
   // =====================================================================================
   {
-    id: 'SARAYA_105_HUNG',
+    id: 'SARAYA_105_HUNG', supplier: 'DHY', family: 'Saraya 105', source: 'aluminum-fabrication-calculator skill (factory cm sheet)', verified: false,
     name: 'Saraya 105 — Top-hung over fixed (2 equal parts)',
     nameAr: 'سرايا 105 قلاب مع ثابت',
     category: 'hung',
@@ -177,14 +180,14 @@ export const DEFAULT_SYSTEMS = [
   },
   // =====================================================================================
   {
-    id: 'ROYAL_120_SLIDING_2P',
+    id: 'ROYAL_120_SLIDING_2P', supplier: 'DHY', family: 'Royal 120', source: 'sliding-window-cutting-list skill (Kw/Dh/Dg)', verified: false,
     name: 'Royal 120 — 2-panel sliding (Kw/Dh/Dg model)',
     nameAr: 'رويال 120 سحاب درفتين',
     category: 'sliding',
     mincoCode: 'SL120',
     description: 'Generic 2-panel model: Sash_W = W/2 + Kw; Sash_H = H − Dh; Glass = Sash − Dg. Royal 120: Kw 25, Dh 60 (std rollers) / 65 (high), Dg 125 (130 heavy DGU). Change the constants for any other 2-panel system.',
     barLength: 6000, waste: 0.05, rounding: 1,
-    defaultGlassKey: 'GL_DGU24_HDGREY_TGF',
+    defaultGlassKey: 'GL_DGU24_TINTED',
     constants: [
       { key: 'KW', label: 'Kw — sash width increase', value: 25 },
       { key: 'DG', label: 'Dg — glass deduction', value: 125 },
@@ -222,104 +225,19 @@ export const DEFAULT_SYSTEMS = [
     ],
     drawing: { type: 'sliding', pattern: "'SS'" },
   },
-  // =====================================================================================
-  {
-    id: 'BOX_HINGED_DOOR',
-    name: 'Box 12 cm — Hinged door (1 / 2 leaves)',
-    nameAr: 'باب مفصلي بكس 12سم',
-    category: 'door',
-    mincoCode: 'HD45',
-    description: 'Generic hinged-door model on Box 12 cm hinged frame. Constants: frame-to-leaf clearance, leaf glass deductions. Adjust to the factory sheet when available; leaf and bead profile prices are missing.',
-    barLength: 6000, waste: 0.07, rounding: 1,
-    defaultGlassKey: 'GL_6_CLEAR_TMP_SEC',
-    constants: [
-      { key: 'LC', label: 'Leaf clearance total per opening (mm)', value: 130 },
-      { key: 'LHD', label: 'Leaf height deduction (mm)', value: 70 },
-      { key: 'GD', label: 'Glass deduction from leaf (mm)', value: 160 },
-    ],
-    params: [
-      { key: 'W', label: 'Opening width', unit: 'mm', type: 'number', default: 1000 },
-      { key: 'H', label: 'Opening height', unit: 'mm', type: 'number', default: 2200 },
-      { key: 'NL', label: 'Leaves', type: 'select', default: '1', options: [{ value: '1', label: 'Single leaf', set: { NLEAF: 1 } }, { value: '2', label: 'Double leaf', set: { NLEAF: 2 } }] },
-      { key: 'CLOSER', label: 'Door closer', type: 'select', default: '1', options: [{ value: '1', label: 'Yes', set: { NCL: 1 } }, { value: '0', label: 'No', set: { NCL: 0 } }] },
-    ],
-    variables: [
-      { key: 'LW', label: 'Leaf width', expr: '(W - LC) / NLEAF' },
-      { key: 'LH', label: 'Leaf height', expr: 'H - LHD' },
-      { key: 'GW', expr: 'LW - GD' }, { key: 'GH', expr: 'LH - GD' },
-      { key: 'NP', expr: 'NLEAF' },
-    ],
-    profiles: [
-      { code: '1012840530', name: 'Box hinged frame 12 cm — حلق 12 بكس مفصلات', finish: 'black', pieces: [{ label: 'Head', length: 'W', qty: '1' }, { label: 'Jamb', length: 'H', qty: '2' }] },
-      { code: 'BOX_LEAF', name: 'Door leaf profile', finish: 'black', pieces: [{ label: 'Leaf stile', length: 'LH', qty: '2 * NLEAF' }, { label: 'Leaf rail', length: 'LW', qty: '2 * NLEAF' }] },
-      { code: 'BOX_BEAD', name: 'Glazing bead', finish: 'black', pieces: [{ label: 'Bead H', length: 'GW', qty: '2 * NLEAF' }, { label: 'Bead V', length: 'GH', qty: '2 * NLEAF' }] },
-    ],
-    glass: [{ label: 'Leaf glass', width: 'GW', height: 'GH', qty: 'NLEAF' }],
-    accessories: [
-      { code: 'ACC_DOOR_HINGE', name: 'Hinges (3 per leaf)', unit: 'pc', qty: '3 * NLEAF' },
-      { code: 'ACC_DOOR_LOCK', name: 'Mortise lock + cylinder', unit: 'pc', qty: '1' },
-      { code: 'ACC_DOOR_CLOSER', name: 'Door closer', unit: 'pc', qty: 'NCL * NLEAF' },
-      { code: '363026', name: 'Flush bolts (passive leaf)', unit: 'pc', qty: 'if(NLEAF > 1, 2, 0)' },
-      { code: '556008E', name: 'EPDM glazing gasket', unit: 'm', qty: 'NLEAF * 2 * 2 * (GW + GH) / 1000' },
-      { code: 'WOOL_PILE_7_M', name: 'Weather pile', unit: 'm', qty: 'NLEAF * 2 * (LW + LH) / 1000' },
-      { code: '961220', name: 'Screws', unit: 'pc', qty: '40' },
-      { code: '564416', name: 'Silicone black', unit: 'pc', qty: 'ceil(2 * (W + H) / 1000 / 8)' },
-    ],
-    drawing: { type: 'door', leaves: 'NLEAF' },
-  },
-  // =====================================================================================
-  {
-    id: 'SG50_STICK_CW',
-    name: 'SG50 — Stick curtain wall (grid)',
-    nameAr: 'كيرتن وول SG50',
-    category: 'curtain_wall',
-    mincoCode: 'CW50',
-    description: 'Elevation W × H split into NCOL × NROW modules. Mullions full height (NCOL+1), transoms per module (NROW+1 rows). Glass = module − GD (sightline minus edge bite). Brackets, anchors and structural check are project-specific — prices flagged.',
-    barLength: 6000, waste: 0.08, rounding: 1,
-    defaultGlassKey: 'GL_DGU24_HDGREY_TGF',
-    constants: [
-      { key: 'SL', label: 'Sightline (mm)', value: 50 },
-      { key: 'GD', label: 'Glass deduction per module (mm)', value: 20 },
-      { key: 'FLOOR', label: 'Floor-to-floor height for brackets (mm)', value: 3500 },
-    ],
-    params: [
-      { key: 'W', label: 'Elevation width', unit: 'mm', type: 'number', default: 6000 },
-      { key: 'H', label: 'Elevation height', unit: 'mm', type: 'number', default: 4000 },
-      { key: 'NCOL', label: 'Modules across (columns)', type: 'number', default: 4 },
-      { key: 'NROW', label: 'Modules high (rows)', type: 'number', default: 2 },
-    ],
-    variables: [
-      { key: 'MW', label: 'Module width', expr: 'W / NCOL' },
-      { key: 'MH', label: 'Module height', expr: 'H / NROW' },
-      { key: 'NMUL', expr: 'NCOL + 1' },
-      { key: 'NTR', expr: 'NCOL * (NROW + 1)' },
-      { key: 'TRL', label: 'Transom length', expr: 'MW - SL' },
-      { key: 'GW', expr: 'MW - GD' }, { key: 'GH', expr: 'MH - GD' },
-      { key: 'NP', expr: 'NCOL * NROW' },
-      { key: 'JOINT_M', label: 'Total joint length (m)', expr: '(NMUL * H + NTR * TRL) / 1000' },
-    ],
-    profiles: [
-      { code: '1070010530', name: 'SG50 mullion / frame — حلق SG50', finish: 'black', pieces: [{ label: 'Mullion', length: 'H', qty: 'NMUL' }, { label: 'Transom', length: 'TRL', qty: 'NTR' }] },
-      { code: '1016830530', name: 'SG50 external cover — غطاء خارجي', finish: 'black', pieces: [{ label: 'Mullion cover', length: 'H', qty: 'NMUL' }, { label: 'Transom cover', length: 'TRL', qty: 'NTR' }] },
-      { code: '1020032230', name: 'SG50 adaptor — أدابتر', finish: 'bronze', pieces: [{ label: 'Mullion adaptor', length: 'H', qty: 'NMUL' }, { label: 'Transom adaptor', length: 'TRL', qty: 'NTR' }] },
-    ],
-    glass: [{ label: 'Vision glass (DGU)', width: 'GW', height: 'GH', qty: 'NP' }],
-    accessories: [
-      { code: '556007E', name: 'Structural EPDM gasket 8 mm (2 lines)', unit: 'm', qty: '2 * JOINT_M' },
-      { code: 'E024006', name: 'Pressure gasket (2 lines)', unit: 'm', qty: '2 * JOINT_M' },
-      { code: 'ACC_CW_BRACKET', name: 'Mullion brackets (2 per mullion per floor)', unit: 'pc', qty: '2 * NMUL * ceil(H / FLOOR)' },
-      { code: '564466', name: 'Weather silicone (1 tube / 10 lm)', unit: 'pc', qty: 'ceil(JOINT_M / 10)' },
-      { code: '961220', name: 'Pressure-plate screws (every 250 mm)', unit: 'pc', qty: 'ceil(JOINT_M * 4)' },
-      { code: '571000', name: 'Steel angles / setting blocks', unit: 'pc', qty: '4 * NP' },
-    ],
-    drawing: { type: 'grid', cols: 'NCOL', rows: 'NROW' },
-  },
+
 ];
+
+export const DEFAULT_SYSTEMS = [...CLIST_SYSTEMS, ...SKILL_SYSTEMS];
+
+/** Systems removed from the library because their deductions were assumptions, not factory data. */
+export const RETIRED_SYSTEM_IDS = ['BOX_HINGED_DOOR', 'SG50_STICK_CW'];
+export const LIBRARY_VERSION = 3;
 
 export const CATEGORIES = [
   { id: 'sliding', label: 'Sliding windows & doors' },
   { id: 'fixed', label: 'Fixed windows' },
-  { id: 'hung', label: 'Hung / casement windows' },
+  { id: 'hung', label: 'Hinged / casement windows' },
   { id: 'door', label: 'Hinged doors' },
   { id: 'curtain_wall', label: 'Curtain wall / structural glazing' },
   { id: 'skylight', label: 'Skylights' },

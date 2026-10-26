@@ -6,7 +6,9 @@ import { renderShop } from './ui/shop.js';
 import { renderSystems, renderSystemEditor } from './ui/systems.js';
 import { renderPrices } from './ui/prices.js';
 import { renderSettings } from './ui/settings.js';
+import { renderImport } from './ui/import.js';
 import { qs } from './ui/helpers.js';
+import { mountSearch } from './ui/search.js';
 
 const routes = [
   { re: /^#\/dashboard/, view: renderDashboard, nav: 'dashboard' },
@@ -18,6 +20,7 @@ const routes = [
   { re: /^#\/systems\/new/, view: (c, m, q) => renderSystemEditor(c, null, q), nav: 'systems' },
   { re: /^#\/systems\/([^/?]+)/, view: (c, m, q) => renderSystemEditor(c, m[1], q), nav: 'systems' },
   { re: /^#\/systems/, view: renderSystems, nav: 'systems' },
+  { re: /^#\/import/, view: renderImport, nav: 'import' },
   { re: /^#\/prices/, view: renderPrices, nav: 'prices' },
   { re: /^#\/settings/, view: renderSettings, nav: 'settings' },
 ];
@@ -37,4 +40,5 @@ function route() {
 
 window.addEventListener('hashchange', route);
 window.MINCO = { store };
+mountSearch(document.getElementById('gsearch-host'));
 route();
