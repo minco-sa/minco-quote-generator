@@ -8,6 +8,7 @@ import { renderPrices } from './ui/prices.js';
 import { renderSettings } from './ui/settings.js';
 import { renderImport } from './ui/import.js';
 import { qs } from './ui/helpers.js';
+import { mountSearch } from './ui/search.js';
 
 const routes = [
   { re: /^#\/dashboard/, view: renderDashboard, nav: 'dashboard' },
@@ -39,4 +40,5 @@ function route() {
 
 window.addEventListener('hashchange', route);
 window.MINCO = { store };
+mountSearch(document.getElementById('gsearch-host'));
 route();
